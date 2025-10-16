@@ -14,7 +14,7 @@ typedef struct {
 	int bod;
 }student;
 
-int ispis(student*, int);
+int ispis(student*, int, float);
 
 int main() {
 
@@ -22,11 +22,13 @@ int main() {
 	char ime1[50];
 	char prez[50];
 	int bodovi;
+	float maxBod = 60.0;
+
 
 	FILE* f = fopen("nesto.txt", "r");
 	if (f == NULL) {
 		printf("GReska: file ne postoji");
-		return 1;
+		return -1;
 	}
 
 	while (fscanf(f, "%s %s %d", ime1, prez, &bodovi) == 3) { //brojac redaka
@@ -38,18 +40,25 @@ int main() {
 
 	for (int i = 0; i < n; i++) {
 		fscanf(f, "%s %s %d", s[i].ime, s[i].prezime, &s[i].bod);
+
+		if (s[i].bod > 60) {
+			printf("greska, bodovi nemogu bit veci od 60, ispravite u fileu");
+			return -1;
+		}
 	}
 
-	ispis(s, n);
+	ispis(s, n, maxBod);
 	free(s);
 	return 0;
 }
 
-int ispis(student *x,int k) {
+int ispis(student *x,int k, float max) {
 
 	int i;
+	float relBod=0;
 	for (i = 0; i < k; i++) {
-		printf("%s %s %d\n", x[i].ime, x[i].prezime, x[i].bod);
+		relBod= ((float)x[i].bod / max) * 100.0;
+		printf("%s %s %d %.2f\n", x[i].ime, x[i].prezime, x[i].bod, relBod);
 	}
 	return 0;
 }
