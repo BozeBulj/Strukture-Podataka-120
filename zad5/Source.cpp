@@ -3,162 +3,80 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
-#include <string.h>
 
-// Struktura èvora stoga
+// Struktura za Ävor stoga
 typedef struct Node {
-    double value;          // Vrijednost na stogu
-    struct Node* next;     // Pokazivaè na sljedeæi element
+    double value;
+    struct Node *next;
 } Node;
 
-// ====== Deklaracije funkcija ======
-Node* push(Node* top, double value);          // Dodaje vrijednost na vrh stoga
-Node* pop(Node* top, double* value);          // Uklanja vrh stoga i vraæa ga kroz *value
-int isOperator(char c);                       // Provjerava je li znak operator
-double calculate(double a, double b, char op);// Izvršava osnovne aritmetièke operacije
-double evaluatePostfix(const char* expression); // Raèuna vrijednost postfiks izraza
-char* readFromFile(const char* filename);     // Uèitava cijeli izraz iz datoteke
+// ---------------- DEKLARACIJE ----------------
+Node* push(Node *top, double val);
+Node* pop(Node *top, double *val);
+double evaluatePostfix(char *filename);
 
-
-// ====== Glavna funkcija ======
+// ---------------- MAIN ----------------
 int main() {
-    char* expression = readFromFile("postfix.txt");
-    if (expression == NULL) {
-        printf("Error reading file.\n");
-        return 1;
-    }
-
-    printf("Postfix expression: %s\n", expression);
-
-    double result = evaluatePostfix(expression);
-    printf("Result = %.2f\n", result);
-
-    free(expression);
+    double result = evaluatePostfix("postfix.txt");
+    printf("Rezultat: %.2f\n", result);
     return 0;
 }
 
+// ---------------- FUNKCIJE ----------------
 
-// ====== Definicije funkcija ======
-
-// ------------------------------------------------------------
-// Dodaje novi element na vrh stoga
-// ------------------------------------------------------------
-Node* push(Node* top, double value) {
-    Node* newNode = (Node*)malloc(sizeof(Node));
-    if (!newNode) {
-        printf("Memory allocation error!\n");
-        exit(1);
-    }
-    newNode->value = value;
+// Gura broj na vrh stoga
+Node* push(Node *top, double val) {
+    Node *newNode = (Node*)malloc(sizeof(Node));
+    newNode->value = val;
     newNode->next = top;
-    return newNode; // Novi èvor postaje vrh stoga
+    return newNode;
 }
 
-// ------------------------------------------------------------
-// Skida element s vrha stoga i vraæa njegovu vrijednost
-// ------------------------------------------------------------
-Node* pop(Node* top, double* value) {
-    if (top == NULL) {
-        printf("Error: Stack underflow!\n");
+// Skida broj sa stoga
+Node* pop(Node *top, double *val) {
+    if (!top) {
+        printf("GreÅ¡ka: stog je prazan!\n");
         exit(1);
     }
-    *value = top->value;
-    Node* temp = top;
+    *val = top->value;
+    Node *temp = top;
     top = top->next;
     free(temp);
     return top;
 }
 
-// ------------------------------------------------------------
-// Provjerava je li znak operator
-// ------------------------------------------------------------
-int isOperator(char c) {
-    return (c == '+' || c == '-' || c == '*' || c == '/');
-}
-
-// ------------------------------------------------------------
-// Izvršava osnovnu aritmetièku operaciju izmeðu a i b
-// ------------------------------------------------------------
-double calculate(double a, double b, char op) {
-    switch (op) {
-    case '+': return a + b;
-    case '-': return a - b;
-    case '*': return a * b;
-    case '/':
-        if (b == 0) {
-            printf("Error: Division by zero!\n");
-            exit(1);
-        }
-        return a / b;
-    default:
-        printf("Unknown operator '%c'\n", op);
+// RaÄunanje izraza u postfiks obliku
+double evaluatePostfix(char *filename) {
+    FILE *f = fopen(filename, "r");
+    if (!f) {
+        printf("GreÅ¡ka pri otvaranju datoteke!\n");
         exit(1);
     }
-}
 
-// ------------------------------------------------------------
-// Raèuna vrijednost izraza u postfiks obliku
-// ------------------------------------------------------------
-double evaluatePostfix(const char* expression) {
-    Node* stack = NULL;
-    char token[50];
-    int i = 0, j = 0;
+    Node *stack = NULL;
+    char c;
+    double a, b;
 
-    while (expression[i] != '\0') {
-        if (isspace(expression[i])) {
-            i++;
-            continue;
+    while ((c = fgetc(f)) != EOF) {
+        if (isdigit(c)) {
+            stack = push(stack, c - '0'); // pretvaranje znaka u broj
         }
-
-        // Ako je broj
-        if (isdigit(expression[i]) || (expression[i] == '-' && isdigit(expression[i + 1]))) {
-            j = 0;
-            // èitamo cijeli broj (ili negativan)
-            while (isdigit(expression[i]) || expression[i] == '.' || expression[i] == '-') {
-                token[j++] = expression[i++];
-            }
-            token[j] = '\0';
-            double num = atof(token);
-            stack = push(stack, num);
-        }
-        // Ako je operator
-        else if (isOperator(expression[i])) {
-            double b, a;
+        else if (c == '+' || c == '-' || c == '*' || c == '/') {
             stack = pop(stack, &b);
             stack = pop(stack, &a);
-            double result = calculate(a, b, expression[i]);
-            stack = push(stack, result);
-            i++;
+
+            switch (c) {
+                case '+': stack = push(stack, a + b); break;
+                case '-': stack = push(stack, a - b); break;
+                case '*': stack = push(stack, a * b); break;
+                case '/': stack = push(stack, a / b); break;
+            }
         }
-        else {
-            printf("Invalid character: %c\n", expression[i]);
-            exit(1);
-        }
+        // preskaÄe razmake i nove redove
     }
 
-    double finalResult;
-    stack = pop(stack, &finalResult);
-
-    // Ako ima još elemenata na stogu -> izraz nije ispravan
-    if (stack != NULL) {
-        printf("Error: Invalid postfix expression!\n");
-        exit(1);
-    }
-
-    return finalResult;
-}
-
-// ------------------------------------------------------------
-// Èita cijeli postfiks izraz iz datoteke u string
-// ------------------------------------------------------------
-char* readFromFile(const char* filename) {
-    FILE* file = fopen(filename, "r");
-    if (!file) return NULL;
-
-    char* buffer = (char*)malloc(256 * sizeof(char));
-    if (!buffer) return NULL;
-
-    fgets(buffer, 256, file);
-    fclose(file);
-    return buffer;
+    fclose(f);
+    double result;
+    stack = pop(stack, &result);
+    return result;
 }
